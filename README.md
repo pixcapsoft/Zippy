@@ -203,13 +203,13 @@ zippy diff v1.0 v1.1
 
 ## 🧑‍💻 Contributing
 
-Pull requests and issues are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Pull requests and issues are welcome! See [CONTRIBUTION.md](CONTRIBUTION.md) for details.
 
 ---
 
 ## 📜 License
 
-MIT License. See [LICENSE](LICENSE) for details.
+Zippy License. See [LICENSE](LICENSE) for details.
 
 ---
 
