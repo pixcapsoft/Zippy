@@ -84,6 +84,12 @@ For best results on Linux/macOS, consider building Zippy from source.
    ```bash
    sudo cp zippy /usr/local/bin/zippy
    ```
+   
+   Remember to give permission to zippy by using:
+   ```bash
+   sudo chmod +x /usr/local/bin/zippy
+   ```
+   otherwise you get permission error when you run zippy.
 
 ---
 
@@ -103,6 +109,11 @@ For best results on Linux/macOS, consider building Zippy from source.
    ```bash
    sudo cp zippy /usr/local/bin/zippy
    ```
+   Remember to give permission to zippy by using:
+   ```bash
+   sudo chmod +x /usr/local/bin/zippy
+   ```
+   otherwise you get permission error when you run zippy.
 
 🧠 **Notes:**
 
@@ -131,7 +142,7 @@ For best results on Linux/macOS, consider building Zippy from source.
    go build -o zippy.exe zippy.go
    ```
 
-   **Linux:**
+   **Linux: [BUILD.md]((See the real life linux building guide))**
    ```sh
    set GOOS=linux
    set GOARCH=amd64
