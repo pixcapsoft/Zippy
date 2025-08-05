@@ -43,7 +43,7 @@ Download from the [Releases](https://github.com/pixcapsoft/Zippy/releases) page 
 - `zippy-darwin` for macOS  
 
 ⚠️ **Note:**  
-- Zippy for Linux is tested only on Ubuntu 25.0.  
+- Zippy for Linux is tested only on Ubuntu 25.0 and Lubuntu 24.04.  
 - macOS builds are untested by the developer.  
 - Windows builds are fully tested.  
 For best results on Linux/macOS, consider building Zippy from source.
