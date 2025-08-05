@@ -142,7 +142,7 @@ For best results on Linux/macOS, consider building Zippy from source.
    go build -o zippy.exe zippy.go
    ```
 
-   **Linux: [BUILD.md]((See the real life linux building guide))**
+   **Linux: [(See the real life linux building guide)](BUILD.md)**
    ```sh
    set GOOS=linux
    set GOARCH=amd64
