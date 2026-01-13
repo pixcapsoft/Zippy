@@ -9,31 +9,33 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 )
 
-var ZippyVersion = "0.0.1"
+var ZippyVersion = "0.2.0 universal build"
 var ZippyAuthor = "PixCap Soft"
+var ZippyBuild = "2025/08/16"
 
 const (
-	ZIPPY_NAME    = "Zippy"
-	ZIPPY_DESC    = "Simple Version Control Tool with Zip Storage"
-	ZIPPY_REPO    = "https://github.com/pixcapsoft/Zippy"
-	ZIPPY_STAGE   = "stage.json"
+	ZIPPY_NAME  = "Zippy"
+	ZIPPY_DESC  = "Simple Version Control Tool with Zip Storage"
+	ZIPPY_REPO  = "https://github.com/pixcapsoft/Zippy"
+	ZIPPY_STAGE = "stage.json"
 )
 
 // Version represents a version entry
 type Version struct {
-	Tag         string    `json:"tag"`
-	Message     string    `json:"message"`
-	Timestamp   time.Time `json:"timestamp"`
-	Author      string    `json:"author"`
-	FilesCount  int       `json:"files_count"`
-	ZipPath     string    `json:"zip_path"`
-	Size        int64     `json:"size"`
+	Tag        string    `json:"tag"`
+	Message    string    `json:"message"`
+	Timestamp  time.Time `json:"timestamp"`
+	Author     string    `json:"author"`
+	FilesCount int       `json:"files_count"`
+	ZipPath    string    `json:"zip_path"`
+	Size       int64     `json:"size"`
 }
 
 // Repository configuration
@@ -147,6 +149,56 @@ func main() {
 			return
 		}
 		zippy.patchVersion(os.Args[2], os.Args[3])
+
+	case "install":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: zippy install <path to plugin executable>")
+			return
+		}
+
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Printf("This operation required administrator previlages. First run the terminal as admin before run this command.\n")
+		fmt.Print("Want to continue [Y/n]: ")
+		yes, _ := reader.ReadString('\n')
+		yes = strings.TrimSpace(yes)
+		if yes == "" {
+			yes = "y"
+		}
+		if yes == "y" || yes == "Y" {
+			exePath, err := os.Executable()
+			if err != nil {
+				fmt.Println("Failed to get Zippy's directory. Please copy the plugin files to Zippy installed directory.")
+			}
+			zippyDir := filepath.Dir(exePath)
+			pluginSrc := os.Args[2]
+			fmt.Println(pluginSrc)
+			zippy.installPlugin(pluginSrc, zippyDir)
+		}
+
+	case "run":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: zippy run <plugin> <commands>")
+			return
+		}
+		zippy.runPlugin(os.Args[2], os.Args[3])
+	case "plugins":
+		zippy.showPlugins()
+	case "uninstall":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: zippy uninstall <plugin>")
+			return
+		}
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Printf("This operation required administrator previlages. First run the terminal as admin before run this command.\n")
+		fmt.Print("Want to continue [Y/n]: ")
+		yes, _ := reader.ReadString('\n')
+		yes = strings.TrimSpace(yes)
+		if yes == "" {
+			yes = "y"
+		}
+		if yes == "y" || yes == "Y" {
+			zippy.uninstallPlugin(os.Args[2])
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		fmt.Println("Run 'zippy help' for available commands")
@@ -159,7 +211,7 @@ func (zippy *Zippy) initPaths() error {
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %v", err)
 	}
-	
+
 	zippy.repoPath = cwd
 	zippy.zippyPath = filepath.Join(cwd, ".zippy")
 	zippy.configPath = filepath.Join(zippy.zippyPath, "config.json")
@@ -197,7 +249,7 @@ func showBanner() {
 
 func showVersion() {
 	fmt.Printf("%s version %s\n", ZIPPY_NAME, ZippyVersion)
-	fmt.Printf("Build: %s\n", time.Now().Format("2006-01-02"))
+	fmt.Printf("Build: %s\n", ZippyBuild)
 	fmt.Printf("Author: %s\n", ZippyAuthor)
 }
 
@@ -271,6 +323,12 @@ COMMANDS:
 
   about, info
       Show detailed information about Zippy.
+  install <path to plugin>
+	  This will install plugins for zippy. Parse path inside "" for better installing.
+  plugins
+      To see what are the installed plugins.
+  uninstall <plugin name>
+      Uninstall parsed plugin.
 
 FILES:
   .zippyignore
@@ -387,7 +445,7 @@ node_modules/
 func (zippy *Zippy) loadZippyIgnore() *ZippyIgnore {
 	zippyignore := &ZippyIgnore{}
 	zippyignorePath := filepath.Join(zippy.repoPath, ".zippyignore")
-	
+
 	file, err := os.Open(zippyignorePath)
 	if err != nil {
 		return zippyignore // Return empty if file doesn't exist
@@ -545,11 +603,11 @@ func (zippy *Zippy) commit() {
 	}
 	// Save version metadata
 	versionInfo := Version{
-		Tag:       version,
-		Message:   message,
-		Timestamp: time.Now(),
-		Author:    "User", // Could get from config
-		ZipPath:   zipPath,
+		Tag:        version,
+		Message:    message,
+		Timestamp:  time.Now(),
+		Author:     zippy.config.Author, // Use author from repo config
+		ZipPath:    zipPath,
 		FilesCount: len(stageList),
 	}
 	// Get file info
@@ -581,7 +639,7 @@ func (zippy *Zippy) createZipFile(zipPath string) error {
 		}
 
 		relPath, _ := filepath.Rel(zippy.repoPath, path)
-		
+
 		// Skip if should be ignored
 		if zippyignore.shouldIgnore(relPath) {
 			if info.IsDir() {
@@ -1111,6 +1169,124 @@ func (zippy *Zippy) patchVersion(version string, addPath string) {
 	zippy.saveVersionInfo(v)
 	fmt.Println("Patch complete.")
 }
+
+// Plugin install function
+func (zippy *Zippy) installPlugin(srcPath, destDir string) {
+	input, err := os.ReadFile(srcPath)
+	fmt.Println(srcPath)
+	if err != nil {
+		fmt.Printf("Failed to install the plugin: %v\nThis isn't plugin's error. Please copy the plugin files to Zippy installed directory.\n", err)
+		return
+	}
+
+	// destPath := filepath.Join(destDir, filepath.Base(srcPath))
+	// err = os.WriteFile(destPath, input, 0755)
+	// if err != nil {
+	// 	fmt.Printf("Failed to write plugin to destination: %v\n", err)
+	// 	return
+	// }
+	// fmt.Println("Plugin installed to:", destPath)
+
+	// Also install to zippyplugins folder
+	zippyPluginsDir := filepath.Join(destDir, "zippyplugins")
+	if err := os.MkdirAll(zippyPluginsDir, 0755); err != nil {
+		fmt.Printf("Failed to create zippyplugins directory: %v\n", err)
+		return
+	}
+	pluginDestPath := filepath.Join(zippyPluginsDir, filepath.Base(srcPath))
+	err = os.WriteFile(pluginDestPath, input, 0755)
+	if err != nil {
+		fmt.Printf("Failed to write plugin to zippyplugins: %v\n", err)
+		return
+	}
+	fmt.Println("Plugin also installed to:", pluginDestPath)
+}
+
+// Plugin execute function
+func (zippy *Zippy) runPlugin(plugin string, command string) {
+	fmt.Println("Zippy is executing plugin: " + plugin)
+	plg := "zippyplugins/" + plugin
+
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Println("error getting executable path:", err)
+		return
+	}
+	pluginDir := filepath.Dir(exePath)
+	pluginPath := filepath.Join(pluginDir, plg)
+
+	cmd := exec.Command(pluginPath, command)
+	cmd.Env = append(os.Environ(), "SECCODE=123")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("error", err)
+	} else {
+		fmt.Println("Execution done!")
+	}
+}
+
+// Zippy plugins show
+func (zippy *Zippy) showPlugins() {
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error getting executable path:", err)
+		return
+	}
+	pluginDir := filepath.Dir(exePath)
+	pluginPath := filepath.Join(pluginDir, "zippyplugins/")
+	files, err := os.ReadDir(pluginPath)
+
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+		fmt.Println("You don't have any plugins installed yet!")
+		return
+	}
+
+	if err != nil {
+		fmt.Printf("Error reading plugins: %v\n", err)
+		return
+	}
+	if len(files) == 0 {
+		fmt.Println("No plugins found.")
+		return
+	}
+
+	//fmt.Println(len(files))
+	fmt.Println("Here is the currently installed zippy plugins available:")
+	fmt.Println("------------------")
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		fmt.Println(file.Name())
+	}
+}
+
+// Plugin uninstall function
+func (zippy *Zippy) uninstallPlugin(pluginName string) {
+
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error getting executable path:", err)
+		return
+	}
+	pluginDir := filepath.Dir(exePath)
+	pluginPath := filepath.Join(pluginDir, "zippyplugins", pluginName)
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+		fmt.Printf("Plugin '%s' not found.\n", pluginName)
+		return
+	}
+	err = os.Remove(pluginPath)
+	if err != nil {
+		fmt.Printf("Failed to uninstall plugin '%s': %v\n", pluginName, err)
+		return
+	}
+	fmt.Printf("Plugin '%s' uninstalled successfully.\n", pluginName)
+}
+
 // Helper functions for copying files and directories
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
@@ -1139,6 +1315,7 @@ func copyDir(src, dst string) error {
 		return copyFile(path, target)
 	})
 }
+
 // Helper to get CRC32 of a file
 func fileCRC32(path string) (uint32, error) {
 	f, err := os.Open(path)
